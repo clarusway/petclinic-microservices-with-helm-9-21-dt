@@ -123,7 +123,6 @@ pipeline {
                         try{
                             sh "curl -s ${GRAND_MASTER_PUBLIC_IP}:8080"
                             echo "${APP_NAME} app is successfully deployed."
-                            sleep(15)
                             break
                         }
                         catch(Exception){
