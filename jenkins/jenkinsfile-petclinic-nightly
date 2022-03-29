@@ -166,13 +166,3 @@ pipeline {
         }
     }
 }
-
-
-kubectl create ns petclinic-dev
-      kubectl delete secret regcred -n petclinic-dev || true
-      kubectl create secret generic regcred -n petclinic-dev \
-      --from-file=.dockerconfigjson=/home/ubuntu/.docker/config.json \
-      --type=kubernetes.io/dockerconfigjson
-      helm repo add stable-petclinic s3://petclinic-helm-charts/stable/myapp/
-      AWS_REGION=us-east-1 helm repo update
-      AWS_REGION=us-east-1 helm upgrade --install petclinic-app-release stable-petclinic/petclinic_chart --version 1.1.2 --namespace petclinic-dev
