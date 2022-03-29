@@ -24,12 +24,12 @@ pipeline {
                 """
             }
         }
-        stage('Package Application') {
-            steps {
-                echo 'Packaging the app into jars with maven'
-                sh ". ./jenkins/package-with-maven-container.sh"
-            }
-        }
+        // stage('Package Application') {
+        //     steps {
+        //         echo 'Packaging the app into jars with maven'
+        //         sh ". ./jenkins/package-with-maven-container.sh"
+        //     }
+        // }
         stage('Prepare Tags for Docker Images') {
             steps {
                 echo 'Preparing Tags for Docker Images'
@@ -76,20 +76,6 @@ pipeline {
             }
         }
 
-        /*
-        stage('Create QA Automation Infrastructure') {
-            steps {
-                echo 'Creating QA Automation Infrastructure for Dev Environment with Cloudfomation'
-                sh "aws cloudformation create-stack --region ${AWS_REGION} --stack-name ${APP_STACK_NAME} --capabilities CAPABILITY_IAM --template-body file://${CFN_TEMPLATE} --parameters ParameterKey=KeyPairName,ParameterValue=${ANS_KEYPAIR}"
-                sh "aws cloudformation wait stack-create-complete --stack-name ${APP_STACK_NAME}" 
-                script {
-                    echo "Docker Grand Master is not UP and running yet."
-                    env.id = sh(script: 'aws ec2 describe-instances --filters Name=tag-value,Values=grand-master Name=tag-value,Values=${APP_STACK_NAME} Name=instance-state-name,Values=running --query Reservations[*].Instances[*].[InstanceId] --output text',  returnStdout:true).trim()
-                    sh 'aws ec2 wait instance-status-ok --instance-ids $id'
-                }
-            }
-        }*/
-
         stage('Create QA Automation Infrastructure') {
             steps {
                 echo 'Creating QA Automation Infrastructure for Dev Environment'
@@ -108,22 +94,6 @@ pipeline {
         }
 
 
-        // stage('Create Docker Swarm for QA Automation Build') {
-        //     steps {
-        //         echo "Setup Docker Swarm for QA Automation Build for ${APP_NAME} App"
-        //         echo "Update dynamic environment"
-        //         sh "sed -i 's/APP_STACK_NAME/${APP_STACK_NAME}/' ./ansible/inventory/dev_stack_dynamic_inventory_aws_ec2.yaml"
-        //         echo "Swarm Setup for all nodes (instances)"
-        //         sh "ansible-playbook -i ./ansible/inventory/dev_stack_dynamic_inventory_aws_ec2.yaml -b ./ansible/playbooks/pb_setup_for_all_docker_swarm_instances.yaml"
-        //         echo "Swarm Setup for Grand Master node"
-        //         sh "ansible-playbook -i ./ansible/inventory/dev_stack_dynamic_inventory_aws_ec2.yaml -b ./ansible/playbooks/pb_initialize_docker_swarm.yaml"
-        //         echo "Swarm Setup for Other Managers nodes"
-        //         sh "ansible-playbook -i ./ansible/inventory/dev_stack_dynamic_inventory_aws_ec2.yaml -b ./ansible/playbooks/pb_join_docker_swarm_managers.yaml"
-        //         echo "Swarm Setup for Workers nodes"
-        //         sh "ansible-playbook -i ./ansible/inventory/dev_stack_dynamic_inventory_aws_ec2.yaml -b ./ansible/playbooks/pb_join_docker_swarm_workers.yaml"
-        //     }
-        // }
-
         stage('Create Kubernetes Cluster for QA Automation Build') {
             steps {
                 echo "Setup Kubernetes cluster for ${APP_NAME} App"
@@ -132,17 +102,15 @@ pipeline {
         }
 
 
-        // stage('Deploy App on Docker Swarm'){
-        //     steps {
-        //         echo 'Deploying App on Swarm'
-        //         sh 'envsubst < docker-compose-swarm-dev.yml > docker-compose-swarm-dev-tagged.yml'
-        //         sh 'ansible-playbook -i ./ansible/inventory/dev_stack_dynamic_inventory_aws_ec2.yaml -b --extra-vars "workspace=${WORKSPACE} app_name=${APP_NAME} aws_region=${AWS_REGION} ecr_registry=${ECR_REGISTRY}" ./ansible/playbooks/pb_deploy_app_on_docker_swarm.yaml'
-        //     }
-        // }
-
         stage('Deploy App on Kubernetes cluster'){
             steps {
                 echo 'Deploying App on Kubernetes'
+                sh "envsubst < k8s/petclinic_chart/values-template.yaml > k8s/petclinic_chart/values.yaml"
+                sh "sed -i s/HELM_VERSION/${BUILD_NUMBER}/ k8s/petclinic_chart/Chart.yaml"
+                sh "helm repo add stable-petclinic s3://petclinic-helm-charts/stable/myapp/"
+                sh "helm package k8s/petclinic_chart"
+                sh "helm s3 push petclinic_chart-${BUILD_NUMBER}.tgz stable-petclinic"
+                sh "ansible-playbook -i ./ansible/inventory/dev_stack_dynamic_inventory_aws_ec2.yaml ./ansible/playbooks/dev-petclinic-deploy.yaml"
                 sh 'until cat /home/ubuntu/test; do echo waiting for config-server; sleep 30; done;'
             }
         }
@@ -198,3 +166,13 @@ pipeline {
         }
     }
 }
+
+
+kubectl create ns petclinic-dev
+      kubectl delete secret regcred -n petclinic-dev || true
+      kubectl create secret generic regcred -n petclinic-dev \
+      --from-file=.dockerconfigjson=/home/ubuntu/.docker/config.json \
+      --type=kubernetes.io/dockerconfigjson
+      helm repo add stable-petclinic s3://petclinic-helm-charts/stable/myapp/
+      AWS_REGION=us-east-1 helm repo update
+      AWS_REGION=us-east-1 helm upgrade --install petclinic-app-release stable-petclinic/petclinic_chart --version 1.1.2 --namespace petclinic-dev
