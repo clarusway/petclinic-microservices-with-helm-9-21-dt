@@ -143,9 +143,10 @@ pipeline {
         stage('Deploy App on Kubernetes cluster'){
             steps {
                 echo 'Deploying App on Kubernetes'
-                sh 'sleep 120'
+                sh 'until cat /home/ubuntu/test; do echo waiting for config-server; sleep 30; done;'
             }
         }
+        
 
         // stage('Test the Application Deployment'){
         //     steps {
