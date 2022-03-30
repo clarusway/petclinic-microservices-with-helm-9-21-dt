@@ -101,7 +101,6 @@ pipeline {
             }
         }
 
-
         stage('Deploy App on Kubernetes cluster'){
             steps {
                 echo 'Deploying App on Kubernetes'
@@ -111,39 +110,39 @@ pipeline {
                 sh "helm package k8s/petclinic_chart"
                 sh "helm s3 push petclinic_chart-${BUILD_NUMBER}.tgz stable-petclinic"
                 sh "envsubst < ansible/playbooks/dev-petclinic-deploy-template > ansible/playbooks/dev-petclinic-deploy.yaml"
-                sh "until cat /home/ubuntu/test; do echo waiting for config-server; sleep 30; done;"    
+                sh "sleep 30"    
                 sh "ansible-playbook -i ./ansible/inventory/dev_stack_dynamic_inventory_aws_ec2.yaml ./ansible/playbooks/dev-petclinic-deploy.yaml"
-                sh "until cat /home/ubuntu/test1; do echo waiting for config-server; sleep 30; done;"
+                // sh "until cat /home/ubuntu/test1; do echo waiting for config-server; sleep 30; done;"
             }
         }
         
 
-        // stage('Test the Application Deployment'){
-        //     steps {
-        //         echo "Check if the ${APP_NAME} app is ready or not"
-        //         script {
-        //             env.GRAND_MASTER_PUBLIC_IP = sh(script:"aws ec2 describe-instances --region ${AWS_REGION} --filters Name=tag-value,Values=grand-master Name=tag-value,Values=${APP_STACK_NAME} --query Reservations[*].Instances[*].[PublicIpAddress] --output text", returnStdout:true).trim()
-        //             while(true) {
-        //                 try{
-        //                     sh "curl -s ${GRAND_MASTER_PUBLIC_IP}:8080"
-        //                     echo "${APP_NAME} app is successfully deployed."
-        //                     break
-        //                 }
-        //                 catch(Exception){
-        //                     echo "Could not connect to ${APP_NAME} app"
-        //                     sleep(5)
-        //                 }
-        //             }
-        //         }
-        //     }
-        // }
+        stage('Test the Application Deployment'){
+            steps {
+                echo "Check if the ${APP_NAME} app is ready or not"
+                script {
+                    env.MASTER_PUBLIC_IP = sh(script:"aws ec2 describe-instances --region ${AWS_REGION} --filters Name=tag-value,Values=master Name=tag-value,Values=tera-kube-ans --query Reservations[*].Instances[*].[PublicIpAddress] --output text", returnStdout:true).trim()
+                    while(true) {
+                        try{
+                            sh "curl -s ${GRAND_MASTER_PUBLIC_IP}:30001"
+                            echo "${APP_NAME} app is successfully deployed."
+                            break
+                        }
+                        catch(Exception){
+                            echo "Could not connect to ${APP_NAME} app"
+                            sleep(5)
+                        }
+                    }
+                }
+            }
+        }
 
-    //     stage('Run QA Automation Tests'){
-    //         steps {
-    //             echo "Run the Selenium Functional Test on QA Environment"
-    //             sh 'ansible-playbook -vvv --connection=local --inventory 127.0.0.1, --extra-vars "workspace=${WORKSPACE} master_public_ip=${GRAND_MASTER_PUBLIC_IP}" ./ansible/playbooks/pb_run_selenium_jobs.yaml'
-    //         }
-    //     }
+        stage('Run QA Automation Tests'){
+            steps {
+                echo "Run the Selenium Functional Test on QA Environment"
+                sh 'ansible-playbook -vvv --connection=local --inventory 127.0.0.1, --extra-vars "workspace=${WORKSPACE} master_public_ip=${MASTER_PUBLIC_IP}" ./ansible/playbooks/pb_run_selenium_jobs.yaml'
+            }
+        }
  }
 
     post {
