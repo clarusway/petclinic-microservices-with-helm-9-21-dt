@@ -121,10 +121,10 @@ pipeline {
             steps {
                 echo "Check if the ${APP_NAME} app is ready or not"
                 script {
-                    env.MASTER_PUBLIC_IP = sh(script:"aws ec2 describe-instances --region ${AWS_REGION} --filters Name=tag-value,Values=master Name=tag-value,Values=tera-kube-ans --query Reservations[*].Instances[*].[PublicIpAddress] --output text", returnStdout:true).trim()
+                    env.MASTER_PUBLIC_IP = sh(script:"aws ec2 describe-instances --region ${AWS_REGION} --filters Name=tag-value,Values=master Name=tag-value,Values=tera-kube-ans Name=instance-state-name,Values=running --query Reservations[*].Instances[*].[PublicIpAddress] --output text", returnStdout:true).trim()
                     while(true) {
                         try{
-                            sh "curl -s ${GRAND_MASTER_PUBLIC_IP}:30001"
+                            sh "curl -s ${MASTER_PUBLIC_IP}:30001"
                             echo "${APP_NAME} app is successfully deployed."
                             break
                         }
