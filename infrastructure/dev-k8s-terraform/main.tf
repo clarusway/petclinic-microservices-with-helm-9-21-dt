@@ -110,6 +110,12 @@ resource "aws_security_group" "matt-kube-master-sg" {
     security_groups = [aws_security_group.matt-kube-mutual-sg.id]
   }
   ingress {
+    protocol = "tcp"
+    from_port = 30000
+    to_port = 32767
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  ingress {
     protocol = "udp"
     from_port = 8472
     to_port = 8472
