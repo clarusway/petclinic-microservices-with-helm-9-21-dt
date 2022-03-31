@@ -16,7 +16,7 @@ pipeline {
                     cd infrastructure/qa-k8s-terraform
                     sed -i "s/mattkey/$ANS_KEYPAIR/g" main.tf
                     terraform init
-                    terraform pply -auto-approve
+                    terraform apply -auto-approve
                 """
                 script {
                     echo "Kubernetes Master is not UP and running yet."
@@ -38,7 +38,7 @@ pipeline {
         failure {
             echo 'Tear down the Kubernetes Cluster infrastructure'
             sh """
-            cd ${WORKSPACE}/infrastructure/dev-k8s-terraform
+            cd ${WORKSPACE}/infrastructure/qa-k8s-terraform
             terraform destroy -auto-approve
             """
         }
