@@ -15,7 +15,7 @@ pipeline {
                 sh """
                     cd infrastructure/qa-k8s-terraform
                     sed -i "s/mattkey/$ANS_KEYPAIR/g" main.tf
-                    terraform init
+                    terraform nit
                     terraform pply -auto-approve
                 """
                 script {
