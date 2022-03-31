@@ -1,7 +1,7 @@
 echo 'Deploying App on Kubernetes'
 envsubst < k8s/petclinic_chart/values-template.yaml > k8s/petclinic_chart/values.yaml
 sed -i s/HELM_VERSION/${BUILD_NUMBER}/ k8s/petclinic_chart/Chart.yaml
-helm repo add stable-petclinic s3://petclinic-helm-charts/stablemyapp/
+helm repo add stable-petclinic s3://petclinic-helm-charts/stablemyapp/ || echo "repository name already exists"
 helm package k8s/petclinic_chart
 helm s3 push petclinic_chart-${BUILD_NUMBER}.tgz stable-petclinic
 envsubst < ansible/playbooks/qa-petclinic-deploy-template >ansible/playbooks/qa-petclinic-deploy.yaml
