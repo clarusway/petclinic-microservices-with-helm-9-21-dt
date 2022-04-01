@@ -124,7 +124,6 @@ pipeline {
                         try{
                             sh "curl -s ${MASTER_PUBLIC_IP}:30001"
                             echo "${APP_NAME} app is successfully deployed."
-                            sh "until cat /home/ubuntu/test1; do echo waiting for config-server; sleep 30; done;"
                             break
                         }
                         catch(Exception){
